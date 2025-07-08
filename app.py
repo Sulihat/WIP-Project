@@ -1,5 +1,5 @@
 import streamlit as st
-from auth_utils import register_user, login_user
+from auth_utils import register_user, login_user, send_reset_code, verify_reset_code, update_password
 from Login import login_ui
 from forecast_module import run_forecasting_pipeline
 import pandas as pd
@@ -8,16 +8,16 @@ import numpy as np
 st.set_page_config(page_title="FinOptix", layout="wide")
 
 # === Initialize session state ===
-if "trigger_signup" not in st.session_state:
-    st.session_state.trigger_signup = False
-if "trigger_login" not in st.session_state:
-    st.session_state.trigger_login = False
-if "page" not in st.session_state:
-    st.session_state.page = "login"
-if "user_email" not in st.session_state:
-    st.session_state.user_email = ""
-if "first_name" not in st.session_state:
-    st.session_state.first_name = ""
+for key, default in {
+    "trigger_signup": False,
+    "trigger_login": False,
+    "page": "login",
+    "user_email": "",
+    "first_name": "",
+    "reset_email": ""
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
 
 # === Login or Sign Up Page ===
 if st.session_state.page == "login":
@@ -30,10 +30,7 @@ if st.session_state.page == "login":
             st.session_state.signup_email,
             st.session_state.signup_password
         )
-        if success:
-            st.success("Registration successful!")
-        else:
-            st.error(msg)
+        st.success("Registration successful!") if success else st.error(msg)
         st.session_state.trigger_signup = False
 
     if st.session_state.get("trigger_login"):
@@ -44,11 +41,49 @@ if st.session_state.page == "login":
         if success:
             st.success(msg)
             st.session_state.user_email = st.session_state.login_email
+            st.session_state.first_name = first_name
             st.session_state.page = "upload"
             st.rerun()
         else:
             st.error(msg)
         st.session_state.trigger_login = False
+
+# === Forgot Password Page ===
+elif st.session_state.page == "forgot_password":
+    st.title("🔐 Forgot Password")
+    email = st.text_input("Enter your registered email address")
+    if st.button("Send Reset Code"):
+        success, msg = send_reset_code(email)
+        st.success(msg) if success else st.error(msg)
+        if success:
+            st.session_state.reset_email = email
+            st.session_state.page = "reset_code"
+
+# === Reset Code Verification Page ===
+elif st.session_state.page == "reset_code":
+    st.title("📩 Enter Verification Code")
+    code = st.text_input("Enter the verification code sent to your email")
+    if st.button("Verify Code"):
+        if verify_reset_code(st.session_state.reset_email, code):
+            st.success("✅ Code verified successfully.")
+            st.session_state.page = "new_password"
+        else:
+            st.error("❌ Invalid or expired code. Please try again.")
+
+# === New Password Set Page ===
+elif st.session_state.page == "new_password":
+    st.title("🔑 Reset Your Password")
+    new_pwd = st.text_input("New Password", type="password")
+    confirm_pwd = st.text_input("Confirm New Password", type="password")
+    if st.button("Update Password"):
+        if new_pwd != confirm_pwd:
+            st.error("Passwords do not match.")
+        elif len(new_pwd) < 6:
+            st.warning("Password must be at least 6 characters.")
+        else:
+            update_password(st.session_state.reset_email, new_pwd)
+            st.success("Password updated successfully!")
+            st.session_state.page = "login"
 
 # === Upload Page ===
 elif st.session_state.page == "upload":
