@@ -1,4 +1,3 @@
-# Login.py
 import streamlit as st
 
 def login_ui():
@@ -31,6 +30,13 @@ def login_ui():
                 border-radius: 6px;
                 padding: 0.5rem;
             }
+            .forgot-password {
+                color: #3498db;
+                text-decoration: underline;
+                cursor: pointer;
+                font-size: 0.9rem;
+                margin-top: 0.5rem;
+            }
             .main > div {
                 padding-top: 0rem !important;
             }
@@ -49,8 +55,15 @@ def login_ui():
         if option == "Login":
             st.text_input("Email Address", key="login_email")
             st.text_input("Password", type="password", key="login_password")
+            
+            # Login button
             if st.button("Login"):
                 st.session_state.trigger_login = True
+
+            # Forgot password button (styled like a link)
+            if st.button("Forgot Password?"):
+                st.session_state.page = "forgot_password"
+
         else:
             st.text_input("First Name", key="signup_first")
             st.text_input("Last Name", key="signup_last")
